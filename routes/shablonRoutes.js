@@ -7,5 +7,6 @@ router.get('/', getShablons);
 
 // Create new shablon
 router.post('/', createShablon);
+// router.post('/', async(req, res)=>await createShablon(req, res));
 
 module.exports = router;

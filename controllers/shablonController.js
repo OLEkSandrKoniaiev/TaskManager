@@ -12,7 +12,7 @@ const getShablons = async (req, res) => {
     }
 };
 
-// @desc    Create new shablon
+// @desc    Create a new shablon
 // @route   POST /api/shablons
 // @access  Public
 const createShablon = async (req, res) => {
