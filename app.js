@@ -9,6 +9,7 @@ var logger = require('morgan');
 var indexRouter = require('./routes/index');
 const usersRouter = require('./routes/userRoutes');
 const shablonRouter = require('./routes/shablonRoutes');
+const taskRouter = require('./routes/taskRoutes');
 
 // installing env variables
 dotenv.config();
@@ -32,6 +33,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use('/', indexRouter);
 app.use('/users', usersRouter);
 app.use('/shablons', shablonRouter);
+app.use('/tasks', taskRouter);
 
 // catch 404 and forward to the error handler
 app.use(function (req, res, next) {
