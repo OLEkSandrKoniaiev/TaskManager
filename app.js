@@ -1,12 +1,12 @@
-var createError = require('http-errors');
+// var createError = require('http-errors');
 const express = require('express');
 const dotenv = require('dotenv');
 const connectDB = require('./config/database');
 var path = require('path');
 var cookieParser = require('cookie-parser');
 var logger = require('morgan');
+const cors = require('cors');
 
-var indexRouter = require('./routes/index');
 const usersRouter = require('./routes/userRoutes');
 const shablonRouter = require('./routes/shablonRoutes');
 const taskRouter = require('./routes/taskRoutes');
@@ -19,36 +19,37 @@ connectDB();
 
 const app = express();
 
-// view engine setup
-app.set('views', path.join(__dirname, 'views'));
-app.set('view engine', 'pug');
-
 app.use(logger('dev'));
-// Middleware for JSON parsing
-app.use(express.json());
-app.use(express.urlencoded({extended: false}));
+app.use(express.json()); // Для парсингу JSON тіла запиту
+app.use(express.urlencoded({extended: false})); // Для парсингу URL-кодованих тіл запиту
 app.use(cookieParser());
+
+// Для обслуговування статичних файлів
 app.use(express.static(path.join(__dirname, 'public')));
 
-app.use('/', indexRouter);
+// CORS middleware - додайте його перед вашими маршрутами API
+app.use(cors()); // Проста конфігурація (дозволяє все)
+
+// Основні маршрути API
 app.use('/users', usersRouter);
 app.use('/shablons', shablonRouter);
 app.use('/tasks', taskRouter);
 
-// catch 404 and forward to the error handler
+// Обробка 404 помилок (будь-який запит, що не був оброблений вище)
 app.use(function (req, res, next) {
-    next(createError(404));
+    const error = new Error(`Not Found - ${req.originalUrl}`);
+    res.status(404);
+    next(error);
 });
 
-// error handler
+// Централізований обробник помилок (має бути останнім middleware)
 app.use(function (err, req, res, next) {
-    // set locals, only providing error in development
-    res.locals.message = err.message;
-    res.locals.error = req.app.get('env') === 'development' ? err : {};
+    const statusCode = res.statusCode === 200 ? 500 : res.statusCode; // Зберігаємо попередній статус або ставимо 500
 
-    // render the error page
-    res.status(err.status || 500);
-    res.render('error');
+    res.status(statusCode).json({
+        message: err.message,
+        stack: process.env.NODE_ENV === 'development' ? err.stack : {},
+    });
 });
 
 module.exports = app;
