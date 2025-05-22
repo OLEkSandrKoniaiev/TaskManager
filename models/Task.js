@@ -21,12 +21,12 @@ const taskSchema = new mongoose.Schema(
         deadline: {
             type: Date,
             required: [true, 'Deadline is required'],
-            validate: {
-                validator: function (value) {
-                    return value instanceof Date && !isNaN(value);
-                },
-                message: 'Deadline must be a valid date'
-            }
+            // validate: {
+            //     validator: function (value) {
+            //         return value instanceof Date && !isNaN(value);
+            //     },
+            //     message: 'Deadline must be a valid date'
+            // }
         },
         priority: {
             type: String,
@@ -43,11 +43,11 @@ const taskSchema = new mongoose.Schema(
             enum: ['pending', 'in progress', 'completed', 'defended', 'overdue'],
             default: 'pending',
         },
-        // in the future it is going to be id to category model
+        // ['mathematics', 'physics', 'chemistry', 'biology', 'other']
         category: {
-            type: String,
-            enum: ['mathematics', 'physics', 'chemistry', 'biology', 'other'],
-            required: [true, 'Category is required'],
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Category',
+            required: [false, 'Category is required'], // it is temporary
         },
         // ['homework', 'exam', 'project', 'lab', 'other']
         tags: {
@@ -55,10 +55,8 @@ const taskSchema = new mongoose.Schema(
             default: [],
             validate: {
                 validator: function (arr) {
-                    // Перевіряємо, що це масив рядків
                     if (!Array.isArray(arr)) return false;
-
-                    // Перевіряємо кожен тег
+                    if (arr.length > 10) throw new Error('Maximum 10 tags allowed'); // Або поверни false і змінити message
                     return arr.every(tag => {
                         return typeof tag === 'string' &&
                             tag.trim().length > 0 &&
@@ -67,28 +65,24 @@ const taskSchema = new mongoose.Schema(
                     });
                 },
                 message: 'Tags must be an array of strings, each tag max 20 characters, containing only letters, numbers, spaces, hyphens and underscores'
-            },
-            maxlength: [10, 'Maximum 10 tags allowed']
+            }
         },
-        // in the future it is going to be an array for photos, links, and documents
+        // Аналогічно для attachments
         attachments: {
             type: [String],
             default: [],
             validate: {
                 validator: function (arr) {
-                    // Перевіряємо, що це масив рядків
                     if (!Array.isArray(arr)) return false;
-
-                    // Перевіряємо кожне вкладення
+                    if (arr.length > 15) throw new Error('Maximum 15 attachments allowed'); // Або поверни false і змінити message
                     return arr.every(attachment => {
                         return typeof attachment === 'string' &&
                             attachment.trim().length > 0 &&
-                            attachment.length <= 500; // Максимальна довжина для URL або шляху до файлу
+                            attachment.length <= 500;
                     });
                 },
                 message: 'Attachments must be an array of strings (URLs or file paths), each max 500 characters'
-            },
-            maxlength: [15, 'Maximum 15 attachments allowed']
+            }
         },
         user: {
             type: mongoose.Schema.Types.ObjectId,
