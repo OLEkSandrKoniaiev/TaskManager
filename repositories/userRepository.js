@@ -3,7 +3,7 @@ const User = mongoose.models.User || mongoose.model('User', require('../models/U
 
 class UserRepository {
     async getAllUsers() {
-        return await User.find({});
+        return await User.find({}).select('-password');
     }
 
     // async findUserById(id) {
