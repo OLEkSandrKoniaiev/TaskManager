@@ -38,17 +38,17 @@ const sendTokenResponse = async (user, statusCode, res, oldRefreshToken = null) 
     }
 
     res.status(statusCode)
-        .cookie('refreshToken', newRefreshToken, cookieOptions) // Відправляємо Refresh Token у HTTP-Only cookie
+        .cookie('refreshToken', newRefreshToken, cookieOptions)
         .json({
             success: true,
-            accessToken: accessToken, // Відправляємо Access Token у тілі відповіді
+            accessToken: accessToken,
         });
 };
 
 
 // @desc    Get all users
 // @route   GET /api/users
-// @access  Public (або Private/Admin Only в майбутньому)
+// @access  Private/Admin Only
 const getUsers = async (req, res) => {
     try {
         const users = await userRepository.getAllUsers();
@@ -192,9 +192,46 @@ const refreshToken = async (req, res) => {
     }
 };
 
+// @desc    Log user out / clear cookie
+// @route   POST /api/users/logout
+// @access  Private
+const logoutUser = async (req, res) => {
+    // Отримуємо Refresh Token з куки
+    const refreshTokenFromCookie = req.cookies.refreshToken;
+
+    // Очищаємо куку на клієнті
+    res.clearCookie('refreshToken', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict'
+    });
+
+    // Якщо Refresh Token був у куках, видаляємо його з БД
+    if (refreshTokenFromCookie) {
+        try {
+            // Розшифровуємо Refresh Token, щоб отримати ID користувача
+            const decoded = jwt.verify(refreshTokenFromCookie, process.env.JWT_REFRESH_SECRET);
+            const userId = decoded.id;
+
+            // Видаляємо конкретний Refresh Token з масиву користувача в БД
+            await userRepository.removeRefreshToken(userId, refreshTokenFromCookie);
+            // Додатково: можна також очистити Access Token, якщо він зберігався в кеші на стороні клієнта
+            // (але це вже завдання фронтенду, якщо він тримає Access Token не в пам'яті)
+
+        } catch (error) {
+            // Ігноруємо помилки, якщо токен вже прострочений або недійсний
+            // Це може трапитись, якщо клієнт намагається вийти після того, як токен вже анульовано
+            console.error('Error during logout refresh token removal:', error.message);
+        }
+    }
+
+    res.status(200).json({message: 'Logged out successfully.'});
+};
+
 module.exports = {
     getUsers,
     registerUser,
     loginUser,
     refreshToken,
+    logoutUser,
 };
