@@ -3,7 +3,7 @@ const User = mongoose.models.User || mongoose.model('User', require('../models/U
 
 class UserRepository {
     async getAllUsers() {
-        return await User.find({}).select('-password');
+        return await User.find({}).select('-password -refreshTokens');
     }
 
     /**
@@ -12,7 +12,7 @@ class UserRepository {
      * @returns {Promise<User|null>} Об'єкт користувача або null.
      */
     async findUserById(id) {
-        return await User.findById(id).select('-password');
+        return await User.findById(id).select('-password -refreshTokens');
     }
 
     async createUser(userData) {
@@ -66,7 +66,10 @@ class UserRepository {
     async updateUser(id, updateData) {
         // new: true повертає оновлений документ
         // runValidators: true запускає валідатори схеми при оновленні
-        return await User.findByIdAndUpdate(id, updateData, {new: true, runValidators: true}).select('-password');
+        return await User.findByIdAndUpdate(id, updateData, {
+            new: true,
+            runValidators: true
+        }).select('-password -refreshTokens');
     }
 
     /**
@@ -75,7 +78,7 @@ class UserRepository {
      * @returns {Promise<User|null>} Видалений об'єкт користувача або null.
      */
     async deleteUser(id) {
-        return await User.findByIdAndDelete(id).select('-password');
+        return await User.findByIdAndDelete(id).select('-password -refreshTokens');
     }
 }
 
