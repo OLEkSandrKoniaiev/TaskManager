@@ -1,25 +1,35 @@
 const userRepository = require('../repositories/userRepository');
-const jwt = require('jsonwebtoken'); // Додаємо jsonwebtoken
+const jwt = require('jsonwebtoken');
 const mongoose = require('mongoose');
 const User = mongoose.models.User || mongoose.model('User', require('../models/User').schema);
 
 // Функція для створення та відправки токена (або токенів)
-const sendTokenResponse = (user, statusCode, res) => {
+const sendTokenResponse = async (user, statusCode, res, oldRefreshToken = null) => { // Додано oldRefreshToken
     // Створюємо Access Token
     const accessToken = user.getSignedJwtToken();
 
     // Створюємо Refresh Token
-    // У реальному проєкті Refresh Token краще зберігати в базі даних,
-    // пов'язуючи його з користувачем, щоб мати можливість його анулювати.
-    // Для простоти поки що не зберігаємо його в БД, але пам'ятай про це.
-    const refreshToken = jwt.sign({id: user._id}, process.env.JWT_REFRESH_SECRET, {
+    const newRefreshToken = jwt.sign({id: user._id}, process.env.JWT_REFRESH_SECRET, {
         expiresIn: process.env.JWT_REFRESH_EXPIRE
     });
+
+    try {
+        // Якщо є старий Refresh Token, спочатку видаляємо його
+        if (oldRefreshToken) {
+            await userRepository.removeRefreshToken(user._id, oldRefreshToken);
+        }
+        // Зберігаємо новий Refresh Token у базі даних
+        await userRepository.addRefreshToken(user._id, newRefreshToken);
+    } catch (error) {
+        console.error("Error saving/removing refresh token to DB:", error);
+        return res.status(500).json({message: 'Failed to manage refresh token in DB.'});
+    }
 
     const cookieOptions = {
         expires: new Date(Date.now() + process.env.JWT_REFRESH_EXPIRE.replace('d', '') * 24 * 60 * 60 * 1000), // Перетворення днів на мілісекунди
         httpOnly: true, // Робіть це cookie HTTP-Only, щоб JS не міг отримати доступ
-        secure: process.env.NODE_ENV === 'production' // Використовувати secure cookie тільки в продакшені (HTTPS)
+        secure: process.env.NODE_ENV === 'production', // Використовувати secure cookie тільки в продакшені (HTTPS)
+        sameSite: 'strict', // Запобігає CSRF атакам, перевіряй для продакшену згідно фронтенду
     };
 
     // Якщо ми не в продакшені, set secure to false
@@ -28,11 +38,10 @@ const sendTokenResponse = (user, statusCode, res) => {
     }
 
     res.status(statusCode)
-        .cookie('refreshToken', refreshToken, cookieOptions) // Відправляємо Refresh Token у HTTP-Only cookie
+        .cookie('refreshToken', newRefreshToken, cookieOptions) // Відправляємо Refresh Token у HTTP-Only cookie
         .json({
             success: true,
             accessToken: accessToken, // Відправляємо Access Token у тілі відповіді
-            // Можливо, також відправити термін дії Access Token для зручності на фронтенді
         });
 };
 
@@ -69,7 +78,7 @@ const registerUser = async (req, res) => {
         const newUser = await userRepository.createUser({username, email, password, role}); // role буде 'user' за замовчуванням, якщо не вказано
 
         // Відправляємо токен після успішної реєстрації
-        sendTokenResponse(newUser, 201, res);
+        await sendTokenResponse(newUser, 201, res);
 
     } catch (error) {
         // Mongoose validation errors
@@ -94,10 +103,10 @@ const loginUser = async (req, res) => {
         }
 
         // Перевіряємо, чи існує користувач
-        const user = await User.findOne({email}).select('+password'); // Вибираємо поле password, оскільки за замовчуванням воно може бути приховано
+        const user = await User.findOne({email}).select('+password');
 
         if (!user) {
-            return res.status(401).json({message: 'Invalid credentials.'}); // Неправильний email або пароль
+            return res.status(401).json({message: 'Invalid credentials.'});
         }
 
         // Перевіряємо, чи активний користувач (якщо це важливо)
@@ -109,20 +118,83 @@ const loginUser = async (req, res) => {
         const isMatch = await user.matchPassword(password);
 
         if (!isMatch) {
-            return res.status(401).json({message: 'Invalid credentials.'}); // Неправильний email або пароль
+            return res.status(401).json({message: 'Invalid credentials.'});
         }
 
         // Якщо все успішно, відправляємо токен
-        sendTokenResponse(user, 200, res);
+        // При логіні ми не маємо старого refreshToken, тому передаємо null
+        await sendTokenResponse(user, 200, res);
 
     } catch (error) {
         res.status(500).json({message: 'Server error: ' + error.message});
     }
 };
 
+// @desc    Refresh Access Token using Refresh Token
+// @route   POST /api/users/refresh-token
+// @access  Public (доступний тільки через cookie)
+const refreshToken = async (req, res) => {
+    const cookies = req.cookies;
+    const refreshTokenFromCookie = cookies.refreshToken;
+
+    // Перевіряємо наявність Refresh Token у куках
+    if (!refreshTokenFromCookie) {
+        return res.status(401).json({message: 'Not authorized, no refresh token in cookies.'});
+    }
+
+    try {
+        // Верифікуємо Refresh Token
+        const decoded = jwt.verify(refreshTokenFromCookie, process.env.JWT_REFRESH_SECRET);
+
+        // Знаходимо користувача за ID з токена та перевіряємо, чи Refresh Token існує в БД
+        const user = await userRepository.findUserByRefreshToken(refreshTokenFromCookie);
+
+        if (!user) {
+            // Якщо користувача не знайдено або токен не належить цьому користувачу
+            // Це може свідчити про компрометацію, очищаємо куку
+            res.clearCookie('refreshToken', {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: 'strict'
+            });
+            return res.status(403).json({message: 'Forbidden, refresh token not found for user.'});
+        }
+
+        // Перевіряємо, чи токен, отриманий з куки, є у масиві refreshTokens користувача
+        const tokenExistsInDb = user.refreshTokens.some(rt => rt.token === refreshTokenFromCookie);
+        if (!tokenExistsInDb) {
+            // Це може свідчити про компрометацію (токен вже був видалений або невірний)
+            res.clearCookie('refreshToken', {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: 'strict'
+            });
+            return res.status(403).json({message: 'Forbidden, refresh token is not valid or revoked.'});
+        }
+
+        // Якщо все успішно, генеруємо новий Access Token та новий Refresh Token
+        // і відправляємо їх клієнту, замінюючи старий Refresh Token
+        await sendTokenResponse(user, 200, res, refreshTokenFromCookie);
+
+    } catch (error) {
+        // Якщо токен невалідний (прострочений або змінений), очищаємо куку
+        res.clearCookie('refreshToken', {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'strict'
+        });
+        if (error.name === 'TokenExpiredError') {
+            return res.status(401).json({message: 'Refresh token expired, please log in again.'});
+        } else if (error.name === 'JsonWebTokenError') {
+            return res.status(401).json({message: 'Invalid refresh token.'});
+        }
+        res.status(500).json({message: 'Server error: ' + error.message});
+    }
+};
 
 module.exports = {
     getUsers,
     registerUser,
     loginUser,
+    refreshToken,
 };
