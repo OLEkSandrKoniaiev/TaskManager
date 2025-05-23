@@ -1,6 +1,7 @@
 const userRepository = require('../repositories/userRepository');
-const User = require('../models/User'); // Додаємо модель User
 const jwt = require('jsonwebtoken'); // Додаємо jsonwebtoken
+const mongoose = require('mongoose');
+const User = mongoose.models.User || mongoose.model('User', require('../models/User').schema);
 
 // Функція для створення та відправки токена (або токенів)
 const sendTokenResponse = (user, statusCode, res) => {
