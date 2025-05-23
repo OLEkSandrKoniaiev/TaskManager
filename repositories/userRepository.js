@@ -6,13 +6,14 @@ class UserRepository {
         return await User.find({}).select('-password');
     }
 
-    // async findUserById(id) {
-    //     return await User.findById(id);
-    // }
-    //
-    // async findUserByEmail(email) {
-    //     return await User.findOne({email});
-    // }
+    /**
+     * Знаходить користувача за ID.
+     * @param {string} id - ID користувача.
+     * @returns {Promise<User|null>} Об'єкт користувача або null.
+     */
+    async findUserById(id) {
+        return await User.findById(id).select('-password');
+    }
 
     async createUser(userData) {
         const user = new User(userData);
@@ -54,6 +55,27 @@ class UserRepository {
      */
     async findUserByRefreshToken(refreshToken) {
         return await User.findOne({'refreshTokens.token': refreshToken});
+    }
+
+    /**
+     * Оновлює дані користувача.
+     * @param {string} id - ID користувача, якого потрібно оновити.
+     * @param {object} updateData - Об'єкт з даними для оновлення (наприклад, { username: 'newname' }).
+     * @returns {Promise<User|null>} Оновлений об'єкт користувача або null.
+     */
+    async updateUser(id, updateData) {
+        // new: true повертає оновлений документ
+        // runValidators: true запускає валідатори схеми при оновленні
+        return await User.findByIdAndUpdate(id, updateData, {new: true, runValidators: true}).select('-password');
+    }
+
+    /**
+     * Видаляє користувача за ID.
+     * @param {string} id - ID користувача для видалення.
+     * @returns {Promise<User|null>} Видалений об'єкт користувача або null.
+     */
+    async deleteUser(id) {
+        return await User.findByIdAndDelete(id).select('-password');
     }
 }
 
