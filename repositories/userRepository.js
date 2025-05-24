@@ -1,9 +1,28 @@
+// repositories/userRepository.js
 const mongoose = require('mongoose');
 const User = mongoose.models.User || mongoose.model('User', require('../models/User').schema);
 
 class UserRepository {
-    async getAllUsers() {
-        return await User.find({}).select('-password -refreshTokens');
+    /**
+     * Отримує список користувачів з пагінацією.
+     * @param {object} options - Об'єкт параметрів пагінації.
+     * @param {number} options.skip - Кількість документів для пропуску (зміщення).
+     * @param {number} options.limit - Максимальна кількість документів для повернення.
+     * @returns {Promise<{users: User[], total: number}>} Об'єкт з масивом користувачів та їх загальною кількістю.
+     */
+    async getAllUsers({skip = 0, limit = 10}) { // Додаємо параметри з значеннями за замовчуванням
+        const usersPromise = User.find({})
+            .select('-password -refreshTokens')
+            .skip(skip)
+            .limit(limit)
+            .exec(); // Використовуємо .exec() для повернення справжнього Promise
+
+        const countPromise = User.countDocuments({}); // Отримуємо загальну кількість користувачів
+
+        // Очікуємо виконання обох промісів паралельно
+        const [users, total] = await Promise.all([usersPromise, countPromise]);
+
+        return {users, total};
     }
 
     /**
