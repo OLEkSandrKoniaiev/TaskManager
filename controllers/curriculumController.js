@@ -1,21 +1,21 @@
-const shablonRepository = require('../repositories/shablonRepository');
+const curriculumRepository = require('../repositories/curriculumRepository');
 
-// @desc    Get all shablons
-// @route   GET /api/shablons
+// @desc    Get all curriculums
+// @route   GET /api/curriculums
 // @access  Public
-const getShablons = async (req, res) => {
+const getCurriculums = async (req, res) => {
     try {
-        const shablons = await shablonRepository.getAllShablons();
-        res.json(shablons);
+        const curriculums = await curriculumRepository.getAllCurriculums();
+        res.json(curriculums);
     } catch (error) {
         res.status(500).json({message: error.message});
     }
 };
 
-// @desc    Create a new shablon
-// @route   POST /api/shablons
+// @desc    Create a new curriculum
+// @route   POST /api/curriculums
 // @access  Protected
-const createShablon = async (req, res) => {
+const createCurriculum = async (req, res) => {
     const {name, description, universityName, programName, isPublic, fields} = req.body;
 
     if (!name || !universityName || !programName || !fields) {
@@ -23,7 +23,7 @@ const createShablon = async (req, res) => {
     }
 
     try {
-        const newShablon = await shablonRepository.createShablon({
+        const newCurriculum = await curriculumRepository.createCurriculum({
             name,
             description,
             universityName,
@@ -32,13 +32,13 @@ const createShablon = async (req, res) => {
             fields,
             user: req.user._id,
         });
-        res.status(201).json(newShablon);
+        res.status(201).json(newCurriculum);
     } catch (error) {
         res.status(500).json({message: error.message});
     }
 };
 
 module.exports = {
-    getShablons,
-    createShablon,
+    getCurriculums,
+    createCurriculum,
 };

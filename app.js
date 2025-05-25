@@ -8,7 +8,7 @@ var logger = require('morgan');
 const cors = require('cors');
 
 const usersRouter = require('./routes/userRoutes');
-const shablonRouter = require('./routes/shablonRoutes');
+const curriculumRouter = require('./routes/curriculumRoutes');
 const taskRouter = require('./routes/taskRoutes');
 
 // installing env variables
@@ -32,7 +32,7 @@ app.use(cors()); // Проста конфігурація (дозволяє вс
 
 // Основні маршрути API
 app.use('/users', usersRouter);
-app.use('/shablons', shablonRouter);
+app.use('/curriculums', curriculumRouter);
 app.use('/tasks', taskRouter);
 
 // Обробка 404 помилок (будь-який запит, що не був оброблений вище)

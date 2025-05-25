@@ -89,9 +89,9 @@ const taskSchema = new mongoose.Schema(
             ref: 'User',
             required: true,
         },
-        shablon: {
+        curriculum: {
             type: mongoose.Schema.Types.ObjectId,
-            ref: 'Shablon',
+            ref: 'Curriculum',
             required: true,
         },
         // notification: {

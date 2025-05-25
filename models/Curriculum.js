@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-const shablonSchema = new mongoose.Schema(
+const curriculumSchema = new mongoose.Schema(
     {
         name: {
             type: String,
@@ -60,6 +60,6 @@ const shablonSchema = new mongoose.Schema(
     }
 );
 
-const Shablon = mongoose.model('Shablon', shablonSchema);
+const Curriculum = mongoose.model('Curriculum', curriculumSchema);
 
-module.exports = Shablon;
+module.exports = Curriculum;
