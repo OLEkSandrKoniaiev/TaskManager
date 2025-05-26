@@ -6,20 +6,20 @@ class UserRepository {
     /**
      * Отримує список користувачів з пагінацією.
      * @param {object} options - Об'єкт параметрів пагінації.
+     * @param {object} options.query - Об'єкт фільтрації для MongoDB.
      * @param {number} options.skip - Кількість документів для пропуску (зміщення).
      * @param {number} options.limit - Максимальна кількість документів для повернення.
      * @returns {Promise<{users: User[], total: number}>} Об'єкт з масивом користувачів та їх загальною кількістю.
      */
-    async getAllUsers({skip = 0, limit = 10}) { // Додаємо параметри з значеннями за замовчуванням
-        const usersPromise = User.find({})
+    async getAllUsers({query = {}, skip = 0, limit = 10}) {
+        const usersPromise = User.find(query)
             .select('-password -refreshTokens')
             .skip(skip)
             .limit(limit)
-            .exec(); // Використовуємо .exec() для повернення справжнього Promise
+            .exec();
 
-        const countPromise = User.countDocuments({}); // Отримуємо загальну кількість користувачів
+        const countPromise = User.countDocuments(query);
 
-        // Очікуємо виконання обох промісів паралельно
         const [users, total] = await Promise.all([usersPromise, countPromise]);
 
         return {users, total};

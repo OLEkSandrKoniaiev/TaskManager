@@ -5,10 +5,23 @@ const curriculumRepository = require('../repositories/curriculumRepository');
 // @access  Public (currently returns all, regardless of isPublic/owner)
 const getCurriculums = async (req, res) => {
     try {
-        const curriculums = await curriculumRepository.getAllCurriculums();
-        res.status(200).json(curriculums);
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+
+        const skip = (page - 1) * limit;
+
+        const {curriculums, total} = await curriculumRepository.getAllCurriculums({skip, limit});
+
+        res.status(200).json({
+            success: true,
+            count: curriculums.length,
+            total,
+            page,
+            limit,
+            curriculums
+        });
     } catch (error) {
-        console.error("Error fetching curriculums:", error);
+        console.error("Error fetching curriculums with pagination:", error);
         res.status(500).json({message: 'Server error: ' + error.message});
     }
 };

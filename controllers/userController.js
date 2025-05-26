@@ -8,12 +8,9 @@ const User = mongoose.models.User || mongoose.model('User', require('../models/U
 // @access  Private/Admin Only
 const getUsers = async (req, res) => {
     try {
-        // Отримуємо параметри пагінації з query-параметрів запиту (наприклад, /api/users?page=1&limit=10)
-        // Встановлюємо значення за замовчуванням, якщо вони не вказані або не є числами
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 10;
 
-        // Розраховуємо зміщення (скільки документів пропустити)
         const skip = (page - 1) * limit;
 
         // Викликаємо метод репозиторію з параметрами пагінації
@@ -30,7 +27,7 @@ const getUsers = async (req, res) => {
             users               // Масив користувачів
         });
     } catch (error) {
-        console.error("Error fetching users with pagination:", error); // Логування помилки для налагодження
+        console.error("Error fetching users with pagination:", error);
         res.status(500).json({message: 'Server error: ' + error.message});
     }
 };

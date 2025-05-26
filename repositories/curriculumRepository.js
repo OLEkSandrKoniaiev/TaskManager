@@ -2,13 +2,24 @@ const Curriculum = require('../models/Curriculum');
 
 class CurriculumRepository {
     /**
-     * Отримує всі навчальні плани.
-     * У цьому методі поки що немає логіки фільтрації за public/owner.
-     * Ця логіка буде додана пізніше в контролері.
-     * @returns {Promise<Array<Curriculum>>} Масив об'єктів Curriculum.
+     * Отримує всі навчальні плани з пагінацією та можливістю фільтрації.
+     * @param {object} options - Об'єкт параметрів.
+     * @param {object} options.query - Об'єкт фільтрації для MongoDB.
+     * @param {number} options.skip - Кількість документів для пропуску (зміщення).
+     * @param {number} options.limit - Максимальна кількість документів для повернення.
+     * @returns {Promise<{curriculums: Curriculum[], total: number}>} Об'єкт з масивом навч. програм та їх загальною кількістю.
      */
-    async getAllCurriculums(query = {}) {
-        return await Curriculum.find(query);
+    async getAllCurriculums({query = {}, skip = 0, limit = 10}) {
+        const curriculumsPromise = Curriculum.find(query)
+            .skip(skip)
+            .limit(limit)
+            .exec();
+
+        const countPromise = Curriculum.countDocuments(query);
+
+        const [curriculums, total] = await Promise.all([curriculumsPromise, countPromise]);
+
+        return {curriculums, total};
     }
 
     /**
