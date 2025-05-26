@@ -1,12 +1,24 @@
 const express = require('express');
 const router = express.Router();
-const {getCurriculums, createCurriculum} = require('../controllers/curriculumController');
+const {
+    getCurriculums,
+    getCurriculumById,
+    createCurriculum,
+    updateCurriculum,
+    deleteCurriculum,
+} = require('../controllers/curriculumController');
 const {protect} = require('../middlewares/authMiddleware');
 
-// Get all curriculums
-router.get('/', getCurriculums);
+// === Захищені маршрути (потребують Access Token) ===
+// --- Тільки власник ---
+router.put('/:id', protect, updateCurriculum);
+router.delete('/:id', protect, deleteCurriculum);
 
-// Create a new curriculum
+// --- Публічні або тільки власник ---
+router.get('/', protect, getCurriculums);
+router.get('/:id', protect, getCurriculumById);
+
+// --- Публічні ---
 router.post('/', protect, createCurriculum);
 
 module.exports = router;
