@@ -38,10 +38,10 @@ const getTasks = asyncHandler(async (req, res) => {
 // @route   POST /api/tasks
 // @access  Protected
 const createTask = asyncHandler(async (req, res) => {
-    const {name, description, deadline, priority, status, category, tags, attachments, shablon} = req.body;
+    const {name, description, deadline, priority, status, category, tags, attachments, curriculum} = req.body;
 
-    if (!name || !deadline || !category || !shablon) {
-        return res.status(400).json({message: 'Please enter all required fields: name, deadline, category, and shablon'});
+    if (!name || !deadline || !category || !curriculum) {
+        return res.status(400).json({message: 'Please enter all required fields: name, deadline, category, and curriculum'});
     }
 
     try {
@@ -55,7 +55,7 @@ const createTask = asyncHandler(async (req, res) => {
             tags,
             attachments,
             user: req.user._id,
-            shablon: shablon,
+            curriculum: curriculum,
         });
         res.status(201).json(newTask);
     } catch (error) {
