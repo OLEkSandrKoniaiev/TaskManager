@@ -1,4 +1,3 @@
-// var createError = require('http-errors');
 const express = require('express');
 const dotenv = require('dotenv');
 const connectDB = require('./config/database');
@@ -6,6 +5,8 @@ var path = require('path');
 var cookieParser = require('cookie-parser');
 var logger = require('morgan');
 const cors = require('cors');
+const swaggerUi = require('swagger-ui-express');
+const swaggerSpec = require('./config/swagger');
 
 const usersRouter = require('./routes/userRoutes');
 const curriculumRouter = require('./routes/curriculumRoutes');
@@ -34,6 +35,14 @@ app.use(cors()); // Проста конфігурація (дозволяє вс
 app.use('/users', usersRouter);
 app.use('/curriculums', curriculumRouter);
 app.use('/tasks', taskRouter);
+
+// Swagger UI documentation
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+    swaggerOptions: {
+        withCredentials: true,
+        persistAuthorization: true,
+    },
+}));
 
 // Обробка 404 помилок (будь-який запит, що не був оброблений вище)
 app.use(function (req, res, next) {

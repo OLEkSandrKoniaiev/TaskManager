@@ -1,24 +1,25 @@
-// repositories/userRepository.js
 const mongoose = require('mongoose');
 const User = mongoose.models.User || mongoose.model('User', require('../models/User').schema);
 
 class UserRepository {
     /**
-     * Отримує список користувачів з пагінацією.
-     * @param {object} options - Об'єкт параметрів пагінації.
-     * @param {object} options.query - Об'єкт фільтрації для MongoDB.
+     * Отримує список користувачів з пагінацією, фільтрацією та сортуванням.
+     * @param {object} options - Об'єкт параметрів.
+     * @param {object} options.filter - Об'єкт фільтрації для MongoDB.
      * @param {number} options.skip - Кількість документів для пропуску (зміщення).
      * @param {number} options.limit - Максимальна кількість документів для повернення.
+     * @param {object} options.sort - Об'єкт сортування для MongoDB.
      * @returns {Promise<{users: User[], total: number}>} Об'єкт з масивом користувачів та їх загальною кількістю.
      */
-    async getAllUsers({query = {}, skip = 0, limit = 10}) {
-        const usersPromise = User.find(query)
+    async getAllUsers({filter = {}, skip = 0, limit = 10, sort = {}}) {
+        const usersPromise = User.find(filter)
             .select('-password -refreshTokens')
+            .sort(sort)
             .skip(skip)
             .limit(limit)
             .exec();
 
-        const countPromise = User.countDocuments(query);
+        const countPromise = User.countDocuments(filter);
 
         const [users, total] = await Promise.all([usersPromise, countPromise]);
 

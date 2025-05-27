@@ -2,6 +2,153 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
+/**
+ * @swagger
+ * components:
+ *   schemas:
+ *     User:
+ *       type: object
+ *       required:
+ *         - username
+ *         - email
+ *         - password
+ *       properties:
+ *         _id:
+ *           type: string
+ *           description: The auto-generated ID of the user.
+ *         username:
+ *           type: string
+ *           minLength: 3
+ *           maxLength: 30
+ *           description: Unique username of the user.
+ *         email:
+ *           type: string
+ *           format: email
+ *           description: Unique email address of the user.
+ *         role:
+ *           type: string
+ *           enum: [user, admin]
+ *           default: user
+ *           description: Role of the user.
+ *         isActive:
+ *           type: boolean
+ *           default: true
+ *           description: Indicates if the user account is active.
+ *         createdAt:
+ *           type: string
+ *           format: date-time
+ *           description: The date and time when the user was created.
+ *         updatedAt:
+ *           type: string
+ *           format: date-time
+ *           description: The date and time when the user was last updated.
+ *     RegisterUserInput:
+ *       type: object
+ *       required:
+ *         - username
+ *         - email
+ *         - password
+ *       properties:
+ *         username:
+ *           type: string
+ *           minLength: 3
+ *           maxLength: 30
+ *           description: Desired username.
+ *         email:
+ *           type: string
+ *           format: email
+ *           description: User's email address.
+ *         password:
+ *           type: string
+ *           minLength: 8
+ *           description: User's password (must contain uppercase, lowercase, number, and special character).
+ *     LoginInput:
+ *       type: object
+ *       required:
+ *         - email
+ *         - password
+ *       properties:
+ *         email:
+ *           type: string
+ *           format: email
+ *           description: User's email address.
+ *         password:
+ *           type: string
+ *           description: User's password.
+ *     UpdateUserProfileInput:
+ *       type: object
+ *       required:
+ *         - username
+ *       properties:
+ *         username:
+ *           type: string
+ *           minLength: 3
+ *           maxLength: 30
+ *           description: New username for the user.
+ *     UpdateUserRoleInput:
+ *       type: object
+ *       required:
+ *         - role
+ *       properties:
+ *         role:
+ *           type: string
+ *           enum: [user, admin]
+ *           description: New role for the user.
+ *     DeleteUserConfirmation:
+ *       type: object
+ *       required:
+ *         - password
+ *       properties:
+ *         password:
+ *           type: string
+ *           description: User's password for deletion confirmation.
+ *     AuthSuccess:
+ *       type: object
+ *       properties:
+ *         success:
+ *           type: boolean
+ *         accessToken:
+ *           type: string
+ *           description: JWT Access Token.
+ *     UserListResponse:
+ *       type: object
+ *       properties:
+ *         success:
+ *           type: boolean
+ *         count:
+ *           type: integer
+ *           description: Number of users on the current page.
+ *         total:
+ *           type: integer
+ *           description: Total number of users.
+ *         page:
+ *           type: integer
+ *           description: Current page number.
+ *         limit:
+ *           type: integer
+ *           description: Number of items per page.
+ *         users:
+ *           type: array
+ *           items:
+ *             $ref: '#/components/schemas/User'
+ *     MessageResponse:
+ *       type: object
+ *       properties:
+ *         message:
+ *           type: string
+ *     UserMessageResponse:
+ *       type: object
+ *       properties:
+ *         message:
+ *           type: string
+ *         user:
+ *           $ref: '#/components/schemas/User'
+ *     Error:
+ *       type: object
+ *       properties:
+ *         message:
+ *           type: string
+ */
 const userSchema = new mongoose.Schema(
     {
         username: {
@@ -63,23 +210,19 @@ const userSchema = new mongoose.Schema(
 
 userSchema.index({username: 1, email: 1});
 
-// Have hashed password before saving
 userSchema.pre('save', async function (next) {
-    // Check if a password field is modified or if it's a new document
     if (!this.isModified('password')) {
-        return next(); // Corrected to return next()
+        return next();
     }
     const salt = await bcrypt.genSalt(10);
     this.password = await bcrypt.hash(this.password, salt);
     next();
 });
 
-// Method for checking password
 userSchema.methods.matchPassword = async function (enteredPassword) {
     return await bcrypt.compare(enteredPassword, this.password);
 };
 
-// Method for generating JWT token
 userSchema.methods.getSignedJwtToken = function () {
     return jwt.sign({id: this._id, role: this.role}, process.env.JWT_SECRET, {
         expiresIn: process.env.JWT_EXPIRE
