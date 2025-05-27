@@ -9,11 +9,9 @@ const getTasks = async (req, res) => {
     try {
         const userId = req.user._id;
 
-        // Шукаємо всі Curriculum, що належать цьому користувачу
         const userCurriculums = await Curriculum.find({user: userId}).select('_id');
         const curriculumIds = userCurriculums.map(curriculum => curriculum._id);
 
-        // Якщо в користувача немає навчальних планів, він не може мати завдань
         if (curriculumIds.length === 0) {
             return res.status(200).json([]);
         }

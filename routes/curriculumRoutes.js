@@ -6,6 +6,7 @@ const {
     createCurriculum,
     updateCurriculum,
     deleteCurriculum,
+    copyCurriculum,
 } = require('../controllers/curriculumController');
 const {protect} = require('../middlewares/authMiddleware');
 
@@ -17,6 +18,7 @@ router.delete('/:id', protect, deleteCurriculum);
 // --- Публічні або тільки власник ---
 router.get('/', protect, getCurriculums);
 router.get('/:id', protect, getCurriculumById);
+router.post('/:id/copy', protect, copyCurriculum);
 
 // --- Публічні ---
 router.post('/', protect, createCurriculum);

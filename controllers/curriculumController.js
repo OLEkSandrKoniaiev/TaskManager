@@ -1,4 +1,5 @@
 const curriculumRepository = require('../repositories/curriculumRepository');
+const mongoose = require('mongoose');
 
 // @desc    Get all curriculums
 // @route   GET /api/curriculums
@@ -164,6 +165,62 @@ const deleteCurriculum = async (req, res) => {
     }
 };
 
+// @desc    Copy a public curriculum for the authenticated user
+// @route   POST /api/curriculums/:id/copy
+// @access  Protected
+const copyCurriculum = async (req, res) => {
+    try {
+        const curriculumIdToCopy = req.params.id;
+        const userId = req.user._id;
+        const {newName} = req.body;
+
+        if (!mongoose.Types.ObjectId.isValid(curriculumIdToCopy)) {
+            return res.status(400).json({message: 'Invalid curriculum ID format.'});
+        }
+
+        const originalCurriculum = await curriculumRepository.findCurriculumById(curriculumIdToCopy);
+
+        if (!originalCurriculum) {
+            return res.status(404).json({message: 'Original curriculum not found.'});
+        }
+
+        // Перевірка: Curriculum має бути публічним, щоб його можна було копіювати
+        if (!originalCurriculum.isPublic) {
+            return res.status(403).json({message: 'You are not authorized to copy this private curriculum.'});
+        }
+
+        // Підготовка даних для нового Curriculum
+        const newCurriculumData = {
+            name: newName || `${originalCurriculum.name} (Copy)`,
+            description: originalCurriculum.description,
+            universityName: originalCurriculum.universityName,
+            programName: originalCurriculum.programName,
+            isPublic: false,
+            isClosed: false,
+            user: userId,
+            subjects: originalCurriculum.subjects,
+        };
+
+        const copiedCurriculum = await curriculumRepository.createCurriculum(newCurriculumData);
+
+        res.status(201).json({
+            message: 'Curriculum copied successfully.',
+            curriculum: copiedCurriculum
+        });
+
+    } catch (error) {
+        if (error.name === 'CastError') {
+            return res.status(400).json({message: 'Invalid curriculum ID format.'});
+        }
+        if (error.name === 'ValidationError') {
+            const messages = Object.values(error.errors).map(val => val.message);
+            return res.status(400).json({message: 'Validation error when copying curriculum: ' + messages.join(', ')});
+        }
+        console.error("Error copying curriculum:", error);
+        res.status(500).json({message: 'Server error: ' + error.message});
+    }
+};
+
 
 module.exports = {
     getCurriculums,
@@ -171,4 +228,5 @@ module.exports = {
     createCurriculum,
     updateCurriculum,
     deleteCurriculum,
+    copyCurriculum,
 };
