@@ -1,16 +1,62 @@
 const curriculumRepository = require('../repositories/curriculumRepository');
+const mongoose = require('mongoose');
 
 // @desc    Get all curriculums
 // @route   GET /api/curriculums
-// @access  Public (currently returns all, regardless of isPublic/owner)
+// @access  Public/Protected (can filter by ownership or public status)
 const getCurriculums = async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 10;
-
         const skip = (page - 1) * limit;
 
-        const {curriculums, total} = await curriculumRepository.getAllCurriculums({skip, limit});
+        let filter = {};
+        let sort = {};
+
+        filter.$or = [
+            {isPublic: true},
+            {user: req.user._id}
+        ];
+
+        // Фільтрація за isPublic (якщо явно вказано у запиті)
+        // Якщо isPublic=true, то виводимо тільки публічні.
+        // Якщо isPublic=false, то виводимо тільки приватні, що належать поточному користувачеві.
+        if (req.query.isPublic !== undefined) {
+            const isPublicFilter = req.query.isPublic === 'true';
+            if (isPublicFilter) {
+                filter = {isPublic: true};
+            } else {
+                filter = {user: req.user._id};
+            }
+        }
+
+        // Фільтрація за isClosed
+        if (req.query.isClosed !== undefined) {
+            filter.isClosed = req.query.isClosed === 'true';
+        }
+
+        // Пошук за name (часткове співпадіння, регістронезалежний)
+        if (req.query.name) {
+            filter.name = {$regex: req.query.name, $options: 'i'}; // 'i' для регістронезалежного пошуку
+        }
+
+        // Обробка параметрів сортування
+        if (req.query.sortBy) {
+            const parts = req.query.sortBy.split(':');
+            const field = parts[0];
+            const order = parts[1] === 'desc' ? -1 : 1;
+
+            const allowedSortFields = ['name', 'universityName', 'programName', 'createdAt', 'updatedAt'];
+            if (allowedSortFields.includes(field)) {
+                sort[field] = order;
+            } else {
+                console.warn(`Attempted to sort by disallowed field: ${field}. Ignoring.`);
+            }
+        } else {
+            sort.createdAt = -1;
+        }
+
+        const {curriculums, total} = await curriculumRepository.getAllCurriculums({filter, skip, limit, sort});
 
         res.status(200).json({
             success: true,
@@ -21,7 +67,7 @@ const getCurriculums = async (req, res) => {
             curriculums
         });
     } catch (error) {
-        console.error("Error fetching curriculums with pagination:", error);
+        console.error("Error fetching curriculums with pagination, filter, sort, and search:", error);
         res.status(500).json({message: 'Server error: ' + error.message});
     }
 };
@@ -85,7 +131,7 @@ const createCurriculum = async (req, res) => {
 // @route   PUT /api/curriculums/:id
 // @access  Protected (Owner only)
 const updateCurriculum = async (req, res) => {
-    const {name, description, universityName, programName, isPublic, isClosed} = req.body;
+    const {name, description, universityName, programName, isPublic, isClosed, subjects} = req.body;
     const curriculumIdToUpdate = req.params.id;
 
     try {
@@ -106,6 +152,7 @@ const updateCurriculum = async (req, res) => {
             programName,
             isPublic,
             isClosed,
+            subjects,
         };
 
         // Видаляємо undefined значення з updateData, щоб не перезаписувати поля на undefined
@@ -164,6 +211,62 @@ const deleteCurriculum = async (req, res) => {
     }
 };
 
+// @desc    Copy a public curriculum for the authenticated user
+// @route   POST /api/curriculums/:id/copy
+// @access  Protected
+const copyCurriculum = async (req, res) => {
+    try {
+        const curriculumIdToCopy = req.params.id;
+        const userId = req.user._id;
+        const {newName} = req.body;
+
+        if (!mongoose.Types.ObjectId.isValid(curriculumIdToCopy)) {
+            return res.status(400).json({message: 'Invalid curriculum ID format.'});
+        }
+
+        const originalCurriculum = await curriculumRepository.findCurriculumById(curriculumIdToCopy);
+
+        if (!originalCurriculum) {
+            return res.status(404).json({message: 'Original curriculum not found.'});
+        }
+
+        // Перевірка: Curriculum має бути публічним, щоб його можна було копіювати
+        if (!originalCurriculum.isPublic) {
+            return res.status(403).json({message: 'You are not authorized to copy this private curriculum.'});
+        }
+
+        // Підготовка даних для нового Curriculum
+        const newCurriculumData = {
+            name: newName || `${originalCurriculum.name} (Copy)`,
+            description: originalCurriculum.description,
+            universityName: originalCurriculum.universityName,
+            programName: originalCurriculum.programName,
+            isPublic: false,
+            isClosed: false,
+            user: userId,
+            subjects: originalCurriculum.subjects,
+        };
+
+        const copiedCurriculum = await curriculumRepository.createCurriculum(newCurriculumData);
+
+        res.status(201).json({
+            message: 'Curriculum copied successfully.',
+            curriculum: copiedCurriculum
+        });
+
+    } catch (error) {
+        if (error.name === 'CastError') {
+            return res.status(400).json({message: 'Invalid curriculum ID format.'});
+        }
+        if (error.name === 'ValidationError') {
+            const messages = Object.values(error.errors).map(val => val.message);
+            return res.status(400).json({message: 'Validation error when copying curriculum: ' + messages.join(', ')});
+        }
+        console.error("Error copying curriculum:", error);
+        res.status(500).json({message: 'Server error: ' + error.message});
+    }
+};
+
 
 module.exports = {
     getCurriculums,
@@ -171,4 +274,5 @@ module.exports = {
     createCurriculum,
     updateCurriculum,
     deleteCurriculum,
+    copyCurriculum,
 };

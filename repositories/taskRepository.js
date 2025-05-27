@@ -2,16 +2,18 @@ const Task = require('../models/Task');
 
 class TaskRepository {
     /**
-     * Отримує список завдань на основі наданого запиту.
-     * Фільтрація за користувачем буде додана в контролері.
-     * @param {object} query - Об'єкт фільтрації для MongoDB.
+     * Отримує список завдань на основі наданого запиту, фільтрації та сортування.
+     * @param {object} filter - Об'єкт фільтрації для MongoDB.
+     * @param {object} sort - Об'єкт сортування для MongoDB.
      * @returns {Promise<Array<Task>>} Масив об'єктів Task.
      */
-    async getTasks(query = {}) {
-        return await Task.find(query).populate({
-            path: 'curriculum',
-            select: 'user'
-        });
+    async getTasks(filter = {}, sort = {}) {
+        return await Task.find(filter)
+            .sort(sort)
+            .populate({
+                path: 'curriculum',
+                select: 'user subjects'
+            });
     }
 
     /**
@@ -22,7 +24,7 @@ class TaskRepository {
     async findTaskById(id) {
         return await Task.findById(id).populate({
             path: 'curriculum',
-            select: 'user'
+            select: 'user subjects'
         });
     }
 
@@ -48,7 +50,7 @@ class TaskRepository {
             runValidators: true,
         }).populate({
             path: 'curriculum',
-            select: 'user'
+            select: 'user subjects'
         });
     }
 
@@ -60,7 +62,7 @@ class TaskRepository {
     async deleteTask(id) {
         return await Task.findByIdAndDelete(id).populate({
             path: 'curriculum',
-            select: 'user'
+            select: 'user subjects'
         });
     }
 }
