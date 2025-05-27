@@ -1,5 +1,162 @@
 const mongoose = require('mongoose');
 
+/**
+ * @swagger
+ * components:
+ *   schemas:
+ *     Task:
+ *       type: object
+ *       required:
+ *         - name
+ *         - deadline
+ *         - subject
+ *         - category
+ *         - curriculum
+ *       properties:
+ *         _id:
+ *           type: string
+ *           description: The auto-generated ID of the task.
+ *         name:
+ *           type: string
+ *           minLength: 5
+ *           maxLength: 50
+ *           description: Name of the task.
+ *         description:
+ *           type: string
+ *           minLength: 5
+ *           maxLength: 5000
+ *           description: Optional detailed description of the task.
+ *         deadline:
+ *           type: string
+ *           format: date-time
+ *           description: The deadline for the task.
+ *         priority:
+ *           type: string
+ *           enum: [High, Medium, Low]
+ *           default: Medium
+ *           description: Priority level of the task.
+ *         status:
+ *           type: string
+ *           enum: [pending, in progress, completed, defended, overdue]
+ *           default: pending
+ *           description: Current status of the task.
+ *         subject:
+ *           type: string
+ *           description: The subject this task belongs to (e.g., mathematics, physics). Must be defined in the associated curriculum.
+ *         category:
+ *           type: string
+ *           enum: [homework, exam, project, lab, other]
+ *           description: Category of the task (e.g., homework, exam).
+ *         attachments:
+ *           type: array
+ *           items:
+ *             type: string
+ *             maxLength: 500
+ *           maxItems: 15
+ *           description: Array of URLs or paths to attachments.
+ *         curriculum:
+ *           type: string
+ *           description: The ID of the curriculum this task belongs to.
+ *           readOnly: true
+ *         createdAt:
+ *           type: string
+ *           format: date-time
+ *           description: The date and time when the task was created.
+ *           readOnly: true
+ *         updatedAt:
+ *           type: string
+ *           format: date-time
+ *           description: The date and time when the task was last updated.
+ *           readOnly: true
+ *     CreateTaskInput:
+ *       type: object
+ *       required:
+ *         - name
+ *         - deadline
+ *         - subject
+ *         - category
+ *         - curriculum
+ *       properties:
+ *         name:
+ *           type: string
+ *           minLength: 5
+ *           maxLength: 50
+ *           description: Name of the task.
+ *         description:
+ *           type: string
+ *           minLength: 5
+ *           maxLength: 5000
+ *           description: Optional detailed description of the task.
+ *         deadline:
+ *           type: string
+ *           format: date-time
+ *           description: The deadline for the task.
+ *         priority:
+ *           type: string
+ *           enum: [High, Medium, Low]
+ *           default: Medium
+ *           description: Priority level of the task.
+ *         status:
+ *           type: string
+ *           enum: [pending, in progress, completed, defended, overdue]
+ *           default: pending
+ *           description: Initial status of the task.
+ *         subject:
+ *           type: string
+ *           description: The subject this task belongs to.
+ *         category:
+ *           type: string
+ *           enum: [homework, exam, project, lab, other]
+ *           description: Category of the task.
+ *         attachments:
+ *           type: array
+ *           items:
+ *             type: string
+ *           description: Array of URLs or paths to attachments.
+ *         curriculum:
+ *           type: string
+ *           description: The ID of the curriculum this task belongs to.
+ *     UpdateTaskInput:
+ *       type: object
+ *       properties:
+ *         name:
+ *           type: string
+ *           minLength: 5
+ *           maxLength: 50
+ *           description: Updated name of the task.
+ *         description:
+ *           type: string
+ *           minLength: 5
+ *           maxLength: 5000
+ *           description: Updated detailed description of the task.
+ *         deadline:
+ *           type: string
+ *           format: date-time
+ *           description: Updated deadline for the task.
+ *         priority:
+ *           type: string
+ *           enum: [High, Medium, Low]
+ *           description: Updated priority level of the task.
+ *         status:
+ *           type: string
+ *           enum: [pending, in progress, completed, defended, overdue]
+ *           description: Updated status of the task.
+ *         subject:
+ *           type: string
+ *           description: Updated subject this task belongs to.
+ *         category:
+ *           type: string
+ *           enum: [homework, exam, project, lab, other]
+ *           description: Updated category of the task.
+ *         attachments:
+ *           type: array
+ *           items:
+ *             type: string
+ *           description: Updated array of URLs or paths to attachments.
+ *         curriculum:
+ *           type: string
+ *           description: Updated ID of the curriculum this task belongs to.
+ */
 const taskSchema = new mongoose.Schema(
     {
         name: {
