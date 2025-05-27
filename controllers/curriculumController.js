@@ -18,9 +18,6 @@ const getCurriculums = async (req, res) => {
             {user: req.user._id}
         ];
 
-        // Фільтрація за isPublic (якщо явно вказано у запиті)
-        // Якщо isPublic=true, то виводимо тільки публічні.
-        // Якщо isPublic=false, то виводимо тільки приватні, що належать поточному користувачеві.
         if (req.query.isPublic !== undefined) {
             const isPublicFilter = req.query.isPublic === 'true';
             if (isPublicFilter) {
@@ -30,17 +27,14 @@ const getCurriculums = async (req, res) => {
             }
         }
 
-        // Фільтрація за isClosed
         if (req.query.isClosed !== undefined) {
             filter.isClosed = req.query.isClosed === 'true';
         }
 
-        // Пошук за name (часткове співпадіння, регістронезалежний)
         if (req.query.name) {
-            filter.name = {$regex: req.query.name, $options: 'i'}; // 'i' для регістронезалежного пошуку
+            filter.name = {$regex: req.query.name, $options: 'i'};
         }
 
-        // Обробка параметрів сортування
         if (req.query.sortBy) {
             const parts = req.query.sortBy.split(':');
             const field = parts[0];
@@ -155,7 +149,6 @@ const updateCurriculum = async (req, res) => {
             subjects,
         };
 
-        // Видаляємо undefined значення з updateData, щоб не перезаписувати поля на undefined
         Object.keys(updateData).forEach(key => updateData[key] === undefined && delete updateData[key]);
 
         const updatedCurriculum = await curriculumRepository.updateCurriculum(curriculumIdToUpdate, updateData);
@@ -230,12 +223,10 @@ const copyCurriculum = async (req, res) => {
             return res.status(404).json({message: 'Original curriculum not found.'});
         }
 
-        // Перевірка: Curriculum має бути публічним, щоб його можна було копіювати
         if (!originalCurriculum.isPublic) {
             return res.status(403).json({message: 'You are not authorized to copy this private curriculum.'});
         }
 
-        // Підготовка даних для нового Curriculum
         const newCurriculumData = {
             name: newName || `${originalCurriculum.name} (Copy)`,
             description: originalCurriculum.description,

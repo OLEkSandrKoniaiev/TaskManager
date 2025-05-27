@@ -17,8 +17,6 @@ const {protect} = require('../middlewares/authMiddleware');
  *     description: API for managing educational curriculums
  */
 
-// === Захищені маршрути (потребують Access Token) ===
-
 /**
  * @swagger
  * /curriculums:

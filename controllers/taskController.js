@@ -16,12 +16,9 @@ const getTasks = async (req, res) => {
             return res.status(200).json([]);
         }
 
-        // Базовий фільтр: завдання мають належати будь-якому з curriculum користувача
         let filter = {curriculum: {$in: curriculumIds}};
         let sort = {};
 
-        // Обробка параметрів фільтрації з req.query
-        // Дозволені поля для фільтрації: priority, status, category, curriculum, subject
         const {priority, status, category, curriculum, subject, deadline_gte, deadline_lte} = req.query;
 
         if (priority) {
@@ -37,24 +34,16 @@ const getTasks = async (req, res) => {
             filter.subject = subject;
         }
 
-        // Фільтрація за curriculum ID
         if (curriculum) {
-            // Перевіряємо, чи переданий curriculum ID є валідним ObjectId
             if (!mongoose.Types.ObjectId.isValid(curriculum)) {
                 return res.status(400).json({message: 'Invalid curriculum ID format.'});
             }
-            // Перевіряємо, чи переданий curriculum ID належить поточному користувачу
             if (!curriculumIds.some(id => id.toString() === curriculum.toString())) {
-                // Якщо переданий curriculum ID не належить користувачу, повертаємо 403 або порожній масив,
-                // оскільки він не має доступу до завдань, пов'язаних з цим curriculum.
-                // Вирішив повернути 403, щоб чітко вказати на проблему доступу.
                 return res.status(403).json({message: 'You are not authorized to filter by this curriculum.'});
             }
-            // Якщо все добре, додаємо фільтр за конкретним curriculum
             filter.curriculum = curriculum;
         }
 
-        // Фільтрація за діапазоном дат (deadline)
         if (deadline_gte || deadline_lte) {
             filter.deadline = {};
             if (deadline_gte) {
@@ -74,24 +63,19 @@ const getTasks = async (req, res) => {
         }
 
 
-        // Обробка параметрів сортування з req.query
-        // Дозволені поля для сортування: name, deadline
         if (req.query.sortBy) {
-            const parts = req.query.sortBy.split(':'); // Наприклад, 'deadline:desc'
+            const parts = req.query.sortBy.split(':');
             const field = parts[0];
-            const order = parts[1] === 'desc' ? -1 : 1; // 1 для asc, -1 для desc
+            const order = parts[1] === 'desc' ? -1 : 1;
 
-            const allowedSortFields = ['name', 'deadline']; // Тільки дозволені поля для сортування
+            const allowedSortFields = ['name', 'deadline'];
             if (allowedSortFields.includes(field)) {
                 sort[field] = order;
             } else {
-                // Якщо поле для сортування не дозволено, можна повернути 400 або ігнорувати його.
-                // Для більшої гнучкості зараз просто ігноруємо невалідні поля.
                 console.warn(`Attempted to sort by disallowed field: ${field}. Ignoring.`);
             }
         }
 
-        // Викликаємо репозиторій з оновленими параметрами фільтрації та сортування
         const tasks = await taskRepository.getTasks(filter, sort);
 
         res.status(200).json(tasks);
@@ -107,7 +91,7 @@ const getTasks = async (req, res) => {
 const getTaskById = async (req, res) => {
     try {
         const taskId = req.params.id;
-        const userId = req.user._id; // ID аутентифікованого користувача
+        const userId = req.user._id;
 
         const task = await taskRepository.findTaskById(taskId);
 
@@ -115,9 +99,6 @@ const getTaskById = async (req, res) => {
             return res.status(404).json({message: 'Task not found.'});
         }
 
-        // Перевірка власності: завдання належить Curriculum, а Curriculum належить користувачу
-        // console.log('Task curriculum user ID:', task.curriculum.user.toString());
-        // console.log('Request user ID:', userId.toString());
         if (task.curriculum.user.toString() !== userId.toString()) {
             return res.status(403).json({message: 'You are not authorized to access this task.'});
         }
@@ -151,7 +132,6 @@ const createTask = async (req, res) => {
             return res.status(403).json({message: 'You are not authorized to create a task for this curriculum.'});
         }
 
-        // Перевірка, чи subject існує в Curriculum.subjects
         if (subject && !existingCurriculum.subjects.includes(subject)) {
             return res.status(400).json({message: `Subject '${subject}' is not defined in the associated Curriculum.`});
         }
@@ -186,7 +166,7 @@ const createTask = async (req, res) => {
 // @access  Protected (Owner only)
 const updateTask = async (req, res) => {
     const taskId = req.params.id;
-    const userId = req.user._id; // ID аутентифікованого користувача
+    const userId = req.user._id;
     const {name, description, deadline, priority, status, category, subject, attachments, curriculum} = req.body;
 
     try {
@@ -196,12 +176,10 @@ const updateTask = async (req, res) => {
             return res.status(404).json({message: 'Task not found.'});
         }
 
-        // Перевірка власності (якщо Task пов'язаний з Curriculum)
         if (task.curriculum.user.toString() !== userId.toString()) {
             return res.status(403).json({message: 'You are not authorized to update this task.'});
         }
 
-        // Якщо оновлюється curriculum, потрібно перевірити, чи новий curriculum також належить користувачу
         let newCurriculumId = curriculum;
         if (newCurriculumId && newCurriculumId.toString() !== task.curriculum._id.toString()) {
             const newCurriculum = await Curriculum.findById(newCurriculumId).select('user subjects');
@@ -211,12 +189,10 @@ const updateTask = async (req, res) => {
             if (newCurriculum.user.toString() !== userId.toString()) {
                 return res.status(403).json({message: 'You are not authorized to associate this task with the new curriculum.'});
             }
-            // Якщо subject також оновлюється разом з curriculum, перевіряємо його в новому curriculum
             if (subject && !newCurriculum.subjects.includes(subject)) {
                 return res.status(400).json({message: `Subject '${subject}' is not defined in the new associated Curriculum.`});
             }
         } else if (subject && task.curriculum && !task.curriculum.subjects.includes(subject)) {
-            // Якщо curriculum не змінюється, але subject оновлюється, перевіряємо його в поточному curriculum
             return res.status(400).json({message: `Subject '${subject}' is not defined in the current Curriculum.`});
         }
 
@@ -232,7 +208,6 @@ const updateTask = async (req, res) => {
             curriculum: newCurriculumId,
         };
 
-        // Видаляємо undefined значення, щоб не перезаписувати поля на undefined
         Object.keys(updateData).forEach(key => updateData[key] === undefined && delete updateData[key]);
 
         const updatedTask = await taskRepository.updateTask(taskId, updateData);
@@ -261,7 +236,7 @@ const updateTask = async (req, res) => {
 const deleteTask = async (req, res) => {
     try {
         const taskId = req.params.id;
-        const userId = req.user._id; // ID аутентифікованого користувача
+        const userId = req.user._id;
 
         const task = await taskRepository.findTaskById(taskId);
 
@@ -269,7 +244,6 @@ const deleteTask = async (req, res) => {
             return res.status(404).json({message: 'Task not found.'});
         }
 
-        // Перевірка власності
         if (task.curriculum.user.toString() !== userId.toString()) {
             return res.status(403).json({message: 'You are not authorized to delete this task.'});
         }

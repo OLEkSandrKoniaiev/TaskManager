@@ -1,4 +1,3 @@
-// var createError = require('http-errors');
 const express = require('express');
 const dotenv = require('dotenv');
 const connectDB = require('./config/database');
@@ -37,8 +36,7 @@ app.use('/users', usersRouter);
 app.use('/curriculums', curriculumRouter);
 app.use('/tasks', taskRouter);
 
-// Документація Swagger UI
-// Всі ендпоінти документації будуть доступні за шляхом /api-docs
+// Swagger UI documentation
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
     swaggerOptions: {
         withCredentials: true,
