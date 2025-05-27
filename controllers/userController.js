@@ -3,19 +3,62 @@ const mongoose = require('mongoose');
 const User = mongoose.models.User || mongoose.model('User', require('../models/User').schema);
 
 
-// @desc    Get all users
+// @desc    Get all users with search, filter, sort and pagination
 // @route   GET /api/users
 // @access  Private/Admin Only
 const getUsers = async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 10;
-
         const skip = (page - 1) * limit;
 
-        // Викликаємо метод репозиторію з параметрами пагінації
-        // userRepository.getAllUsers тепер повертає { users, total }
-        const {users, total} = await userRepository.getAllUsers({skip, limit});
+        let filter = {};
+        let sort = {};
+
+        // Пошук за username або email (часткове співпадіння, регістронезалежний)
+        if (req.query.search) {
+            const searchRegex = {$regex: req.query.search, $options: 'i'};
+            filter.$or = [
+                {username: searchRegex},
+                {email: searchRegex}
+            ];
+        }
+
+        // Фільтрація за роллю
+        if (req.query.role) {
+            // Перевіряємо, чи надана роль є однією з дозволених
+            const allowedRoles = ['user', 'admin'];
+            if (allowedRoles.includes(req.query.role.toLowerCase())) {
+                filter.role = req.query.role.toLowerCase();
+            } else {
+                return res.status(400).json({message: 'Invalid role for filtering. Allowed roles are "user" or "admin".'});
+            }
+        }
+
+        // Фільтрація за статусом isActive
+        if (req.query.isActive !== undefined) {
+            filter.isActive = req.query.isActive === 'true';
+        }
+
+        // Обробка параметрів сортування
+        if (req.query.sortBy) {
+            const parts = req.query.sortBy.split(':');
+            const field = parts[0];
+            const order = parts[1] === 'desc' ? -1 : 1;
+
+            const allowedSortFields = ['username', 'email', 'role', 'isActive', 'createdAt', 'updatedAt']; // Дозволені поля для сортування
+            if (allowedSortFields.includes(field)) {
+                sort[field] = order;
+            } else {
+                console.warn(`Attempted to sort by disallowed field: ${field}. Ignoring.`);
+            }
+        } else {
+            // Сортування за замовчуванням: за датою створення спадання
+            sort.createdAt = -1;
+        }
+
+        // Викликаємо метод репозиторію з параметрами пагінації, фільтрації та сортування
+        const {users, total} = await userRepository.getAllUsers({filter, skip, limit, sort});
 
         // Відправляємо відповідь з даними та метаданими пагінації
         res.status(200).json({
@@ -27,7 +70,7 @@ const getUsers = async (req, res) => {
             users               // Масив користувачів
         });
     } catch (error) {
-        console.error("Error fetching users with pagination:", error);
+        console.error("Error fetching users with pagination, filter, sort, and search:", error);
         res.status(500).json({message: 'Server error: ' + error.message});
     }
 };
