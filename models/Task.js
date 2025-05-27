@@ -184,11 +184,6 @@ const taskSchema = new mongoose.Schema(
             enum: ["High", "Medium", "Low"],
             default: "Medium",
         },
-        // "pending" (невиконане)
-        // "in progress" (почато)
-        // "completed" (зроблено)
-        // "defended" (захищено - якщо це стосується лабораторних, курсових тощо)
-        // "overdue" (протерміновано)
         status: {
             type: String,
             enum: ['pending', 'in progress', 'completed', 'defended', 'overdue'],
@@ -211,7 +206,7 @@ const taskSchema = new mongoose.Schema(
             validate: {
                 validator: function (arr) {
                     if (!Array.isArray(arr)) {
-                        this.validatorMessage = 'Attachments must be an array.'; // Зберігаємо повідомлення в контексті валідатора
+                        this.validatorMessage = 'Attachments must be an array.';
                         return false;
                     }
                     if (arr.length > 15) {

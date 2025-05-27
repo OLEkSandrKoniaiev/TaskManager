@@ -13,13 +13,13 @@ class UserRepository {
      */
     async getAllUsers({filter = {}, skip = 0, limit = 10, sort = {}}) {
         const usersPromise = User.find(filter)
-            .select('-password -refreshTokens') // Продовжуємо виключати чутливі дані
-            .sort(sort) // Застосовуємо сортування
+            .select('-password -refreshTokens')
+            .sort(sort)
             .skip(skip)
             .limit(limit)
             .exec();
 
-        const countPromise = User.countDocuments(filter); // Лічимо документи з урахуванням фільтрації
+        const countPromise = User.countDocuments(filter);
 
         const [users, total] = await Promise.all([usersPromise, countPromise]);
 

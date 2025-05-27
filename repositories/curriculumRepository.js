@@ -12,7 +12,7 @@ class CurriculumRepository {
      */
     async getAllCurriculums({filter = {}, skip = 0, limit = 10, sort = {}}) {
         const curriculumsPromise = Curriculum.find(filter)
-            .sort(sort) // Застосовуємо сортування
+            .sort(sort)
             .skip(skip)
             .limit(limit)
             .exec();

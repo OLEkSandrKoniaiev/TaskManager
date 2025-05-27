@@ -210,23 +210,19 @@ const userSchema = new mongoose.Schema(
 
 userSchema.index({username: 1, email: 1});
 
-// Have hashed password before saving
 userSchema.pre('save', async function (next) {
-    // Check if a password field is modified or if it's a new document
     if (!this.isModified('password')) {
-        return next(); // Corrected to return next()
+        return next();
     }
     const salt = await bcrypt.genSalt(10);
     this.password = await bcrypt.hash(this.password, salt);
     next();
 });
 
-// Method for checking password
 userSchema.methods.matchPassword = async function (enteredPassword) {
     return await bcrypt.compare(enteredPassword, this.password);
 };
 
-// Method for generating JWT token
 userSchema.methods.getSignedJwtToken = function () {
     return jwt.sign({id: this._id, role: this.role}, process.env.JWT_SECRET, {
         expiresIn: process.env.JWT_EXPIRE
