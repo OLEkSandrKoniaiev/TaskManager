@@ -1,5 +1,6 @@
 const taskRepository = require('../repositories/taskRepository');
 const Curriculum = require('../models/Curriculum');
+const mongoose = require('mongoose');
 
 // @desc    Get all tasks for the authenticated user's curriculums
 // @route   GET /api/tasks
@@ -9,21 +10,95 @@ const getTasks = async (req, res) => {
         const userId = req.user._id;
 
         // Шукаємо всі Curriculum, що належать цьому користувачу
-        // Отримуємо тільки їхні ID, оскільки саме за цими ID ми будемо фільтрувати завдання
         const userCurriculums = await Curriculum.find({user: userId}).select('_id');
         const curriculumIds = userCurriculums.map(curriculum => curriculum._id);
 
-        // Якщо у користувача немає навчальних планів, він не може мати завдань
+        // Якщо в користувача немає навчальних планів, він не може мати завдань
         if (curriculumIds.length === 0) {
             return res.status(200).json([]);
         }
 
-        // Шукаємо завдання, які належать будь-якому з цих curriculum
-        const tasks = await taskRepository.getTasks({curriculum: {$in: curriculumIds}});
+        // Базовий фільтр: завдання мають належати будь-якому з curriculum користувача
+        let filter = {curriculum: {$in: curriculumIds}};
+        let sort = {};
+
+        // Обробка параметрів фільтрації з req.query
+        // Дозволені поля для фільтрації: priority, status, category, curriculum, subject
+        const {priority, status, category, curriculum, subject, deadline_gte, deadline_lte} = req.query;
+
+        if (priority) {
+            filter.priority = priority;
+        }
+        if (status) {
+            filter.status = status;
+        }
+        if (category) {
+            filter.category = category;
+        }
+        if (subject) {
+            filter.subject = subject;
+        }
+
+        // Фільтрація за curriculum ID
+        if (curriculum) {
+            // Перевіряємо, чи переданий curriculum ID є валідним ObjectId
+            if (!mongoose.Types.ObjectId.isValid(curriculum)) {
+                return res.status(400).json({message: 'Invalid curriculum ID format.'});
+            }
+            // Перевіряємо, чи переданий curriculum ID належить поточному користувачу
+            if (!curriculumIds.some(id => id.toString() === curriculum.toString())) {
+                // Якщо переданий curriculum ID не належить користувачу, повертаємо 403 або порожній масив,
+                // оскільки він не має доступу до завдань, пов'язаних з цим curriculum.
+                // Вирішив повернути 403, щоб чітко вказати на проблему доступу.
+                return res.status(403).json({message: 'You are not authorized to filter by this curriculum.'});
+            }
+            // Якщо все добре, додаємо фільтр за конкретним curriculum
+            filter.curriculum = curriculum;
+        }
+
+        // Фільтрація за діапазоном дат (deadline)
+        if (deadline_gte || deadline_lte) {
+            filter.deadline = {};
+            if (deadline_gte) {
+                const dateGte = new Date(deadline_gte);
+                if (isNaN(dateGte.getTime())) {
+                    return res.status(400).json({message: 'Invalid deadline_gte date format.'});
+                }
+                filter.deadline.$gte = dateGte;
+            }
+            if (deadline_lte) {
+                const dateLte = new Date(deadline_lte);
+                if (isNaN(dateLte.getTime())) {
+                    return res.status(400).json({message: 'Invalid deadline_lte date format.'});
+                }
+                filter.deadline.$lte = dateLte;
+            }
+        }
+
+
+        // Обробка параметрів сортування з req.query
+        // Дозволені поля для сортування: name, deadline
+        if (req.query.sortBy) {
+            const parts = req.query.sortBy.split(':'); // Наприклад, 'deadline:desc'
+            const field = parts[0];
+            const order = parts[1] === 'desc' ? -1 : 1; // 1 для asc, -1 для desc
+
+            const allowedSortFields = ['name', 'deadline']; // Тільки дозволені поля для сортування
+            if (allowedSortFields.includes(field)) {
+                sort[field] = order;
+            } else {
+                // Якщо поле для сортування не дозволено, можна повернути 400 або ігнорувати його.
+                // Для більшої гнучкості зараз просто ігноруємо невалідні поля.
+                console.warn(`Attempted to sort by disallowed field: ${field}. Ignoring.`);
+            }
+        }
+
+        // Викликаємо репозиторій з оновленими параметрами фільтрації та сортування
+        const tasks = await taskRepository.getTasks(filter, sort);
 
         res.status(200).json(tasks);
     } catch (error) {
-        console.error("Error fetching tasks:", error);
+        console.error("Error fetching tasks with filters/sort:", error);
         res.status(500).json({message: 'Server error: ' + error.message});
     }
 };
