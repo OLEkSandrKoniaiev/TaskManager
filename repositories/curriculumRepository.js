@@ -2,20 +2,22 @@ const Curriculum = require('../models/Curriculum');
 
 class CurriculumRepository {
     /**
-     * Отримує всі навчальні плани з пагінацією та можливістю фільтрації.
+     * Отримує всі навчальні плани з пагінацією, фільтрацією та сортуванням.
      * @param {object} options - Об'єкт параметрів.
-     * @param {object} options.query - Об'єкт фільтрації для MongoDB.
+     * @param {object} options.filter - Об'єкт фільтрації для MongoDB.
      * @param {number} options.skip - Кількість документів для пропуску (зміщення).
      * @param {number} options.limit - Максимальна кількість документів для повернення.
+     * @param {object} options.sort - Об'єкт сортування для MongoDB.
      * @returns {Promise<{curriculums: Curriculum[], total: number}>} Об'єкт з масивом навч. програм та їх загальною кількістю.
      */
-    async getAllCurriculums({query = {}, skip = 0, limit = 10}) {
-        const curriculumsPromise = Curriculum.find(query)
+    async getAllCurriculums({filter = {}, skip = 0, limit = 10, sort = {}}) {
+        const curriculumsPromise = Curriculum.find(filter)
+            .sort(sort) // Застосовуємо сортування
             .skip(skip)
             .limit(limit)
             .exec();
 
-        const countPromise = Curriculum.countDocuments(query);
+        const countPromise = Curriculum.countDocuments(filter);
 
         const [curriculums, total] = await Promise.all([curriculumsPromise, countPromise]);
 
