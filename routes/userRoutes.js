@@ -1,6 +1,13 @@
 const express = require('express');
 const router = express.Router();
-const {getUsers, getUserById, updateUserProfile, deleteUser, updateUserRole} = require('../controllers/userController');
+const {
+    getUsers,
+    getUserById,
+    updateUserProfile,
+    deleteUser,
+    updateUserRole,
+    updateUserActivity
+} = require('../controllers/userController');
 const {registerUser, loginUser, refreshToken, logoutUser} = require('../controllers/authController');
 const {protect} = require('../middlewares/authMiddleware');
 const authorizeRoles = require('../middlewares/authorizeRolesMiddleware');
@@ -347,73 +354,6 @@ router.delete('/:id', protect, deleteUser);
 
 /**
  * @swagger
- * /users/{id}:
- *   delete:
- *     summary: Delete authenticated user's own account.
- *     tags: [Users]
- *     security:
- *       - BearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         schema:
- *           type: string
- *           format: objectId
- *         required: true
- *         description: ID of the user account to delete. Must be the authenticated user's ID.
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             $ref: '#/components/schemas/DeleteUserConfirmation'
- *     responses:
- *       200:
- *         description: User deleted successfully. Refresh token cookie is also cleared.
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/MessageResponse'
- *         headers:
- *           Set-Cookie:
- *             schema:
- *               type: string
- *               example: refreshToken=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT
- *             description: Refresh token cookie is cleared upon successful deletion.
- *       400:
- *         description: Bad request (e.g., missing password, invalid ID format).
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- *       401:
- *         description: Unauthorized (authentication token missing/invalid, or incorrect password).
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- *       403:
- *         description: Forbidden (user not authorized to delete another user's account).
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- *       404:
- *         description: User not found.
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- *       500:
- *         description: Server error.
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- */
-
-/**
- * @swagger
  * /users:
  *   get:
  *     summary: Get all users (Admin only).
@@ -549,5 +489,48 @@ router.get('/', protect, authorizeRoles('admin'), getUsers);
  *               $ref: '#/components/schemas/Error'
  */
 router.put('/:id/role', protect, authorizeRoles('admin'), updateUserRole);
+
+/**
+ * @swagger
+ * /users/{id}/activity:
+ *   put:
+ *     summary: Update a user's activity status (Admin only).
+ *     description: Allows an administrator to block (isActive=false) or unblock (isActive=true) a user.
+ *     tags: [Users]
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *           format: objectId
+ *         required: true
+ *         description: ID of the user whose activity status is to be updated.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/UpdateUserActivityInput'
+ *     responses:
+ *       200:
+ *         description: User activity status updated successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/UserMessageResponse'
+ *       400:
+ *         description: Bad request (e.g., invalid isActive value, admin blocking themselves).
+ *       401:
+ *         description: Unauthorized.
+ *       403:
+ *         description: Forbidden (user not an admin).
+ *       404:
+ *         description: User not found.
+ *       500:
+ *         description: Server error.
+ */
+router.put('/:id/activity', protect, authorizeRoles('admin'), updateUserActivity);
 
 module.exports = router;

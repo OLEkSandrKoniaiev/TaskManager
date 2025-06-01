@@ -224,10 +224,51 @@ const updateUserRole = async (req, res) => {
     }
 };
 
+// @desc    Update user activity (block/unblock)
+// @route   PUT /api/users/:id/activity
+// @access  Private/Admin Only
+const updateUserActivity = async (req, res) => {
+    const userIdToUpdate = req.params.id;
+    const {isActive} = req.body;
+
+    if (req.user.role !== 'admin') {
+        return res.status(403).json({message: 'Only administrators can update user activity.'});
+    }
+
+    if (typeof isActive !== 'boolean') {
+        return res.status(400).json({message: 'Invalid isActive value provided. It must be a boolean (true or false).'});
+    }
+
+    if (req.user._id.toString() === userIdToUpdate) {
+        return res.status(400).json({message: 'Administrators cannot change their own active status.'});
+    }
+
+    try {
+        const user = await userRepository.findUserById(userIdToUpdate);
+        if (!user) {
+            return res.status(404).json({message: 'User not found.'});
+        }
+
+        const updatedUser = await userRepository.updateUser(userIdToUpdate, {isActive});
+
+        res.status(200).json({
+            message: `User activity status updated successfully. User is now ${isActive ? 'active' : 'blocked'}.`,
+            user: updatedUser
+        });
+
+    } catch (error) {
+        if (error.name === 'CastError') {
+            return res.status(400).json({message: 'Invalid user ID format.'});
+        }
+        res.status(500).json({message: 'Server error: ' + error.message});
+    }
+};
+
 module.exports = {
     getUsers,
     getUserById,
     updateUserProfile,
     deleteUser,
     updateUserRole,
+    updateUserActivity,
 };

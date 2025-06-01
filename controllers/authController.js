@@ -119,22 +119,27 @@ const refreshToken = async (req, res) => {
 
         const user = await userRepository.findUserByRefreshToken(refreshTokenFromCookie);
 
-        if (!user) {
+        const clearTokenCookie = () => {
             res.clearCookie('refreshToken', {
                 httpOnly: true,
                 secure: process.env.NODE_ENV === 'production',
                 sameSite: 'strict'
             });
+        };
+
+        if (!user) {
+            clearTokenCookie();
             return res.status(403).json({message: 'Forbidden, refresh token not found for user.'});
+        }
+
+        if (!user.isActive) {
+            clearTokenCookie();
+            return res.status(403).json({message: 'Your account is inactive. Please contact support.'});
         }
 
         const tokenExistsInDb = user.refreshTokens.some(rt => rt.token === refreshTokenFromCookie);
         if (!tokenExistsInDb) {
-            res.clearCookie('refreshToken', {
-                httpOnly: true,
-                secure: process.env.NODE_ENV === 'production',
-                sameSite: 'strict'
-            });
+            clearTokenCookie();
             return res.status(403).json({message: 'Forbidden, refresh token is not valid or revoked.'});
         }
 
