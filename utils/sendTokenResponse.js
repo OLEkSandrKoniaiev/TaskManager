@@ -2,7 +2,7 @@ const jwt = require("jsonwebtoken");
 const userRepository = require("../repositories/userRepository");
 
 
-export const sendTokenResponse = async (user, statusCode, res, oldRefreshToken = null) => {
+const sendTokenResponse = async (user, statusCode, res, oldRefreshToken = null) => {
     const accessToken = user.getSignedJwtToken();
 
     const newRefreshToken = jwt.sign({id: user._id}, process.env.JWT_REFRESH_SECRET, {
@@ -37,3 +37,5 @@ export const sendTokenResponse = async (user, statusCode, res, oldRefreshToken =
             accessToken: accessToken,
         });
 };
+
+module.exports = sendTokenResponse;

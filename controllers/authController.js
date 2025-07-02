@@ -2,7 +2,7 @@ const userRepository = require('../repositories/userRepository');
 const jwt = require('jsonwebtoken');
 const mongoose = require('mongoose');
 const User = mongoose.models.User || mongoose.model('User', require('../models/User').schema);
-const {sendTokenResponse} = require('../utils/sendTokenResponse')
+const sendTokenResponse = require('../utils/sendTokenResponse')
 
 // @desc    Register a new user
 // @route   POST /api/users/register
