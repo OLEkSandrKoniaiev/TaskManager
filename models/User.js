@@ -131,6 +131,14 @@ const jwt = require('jsonwebtoken');
  *           type: array
  *           items:
  *             $ref: '#/components/schemas/User'
+ *     UpdateUserActivityInput:
+ *       type: object
+ *       required:
+ *         - isActive
+ *       properties:
+ *         isActive:
+ *           type: boolean
+ *           description: New activity status for the user (true for active, false for inactive/blocked).
  *     MessageResponse:
  *       type: object
  *       properties:

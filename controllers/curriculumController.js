@@ -173,7 +173,7 @@ const updateCurriculum = async (req, res) => {
 
 // @desc    Delete a curriculum
 // @route   DELETE /api/curriculums/:id
-// @access  Protected (Owner only)
+// @access  Protected (Owner or Admin)
 const deleteCurriculum = async (req, res) => {
     const curriculumIdToDelete = req.params.id;
 
@@ -184,7 +184,10 @@ const deleteCurriculum = async (req, res) => {
             return res.status(404).json({message: 'Curriculum not found.'});
         }
 
-        if (curriculum.user.toString() !== req.user._id.toString()) {
+        const isOwner = curriculum.user.toString() === req.user._id.toString();
+        const isAdmin = req.user.role === 'admin';
+
+        if (!isOwner && !isAdmin) {
             return res.status(403).json({message: 'You are not authorized to delete this curriculum.'});
         }
 
